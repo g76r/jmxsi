@@ -88,3 +88,16 @@ $ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq
 $
 ```
 
+Getting 4 attributes for every HornetQ queue:
+```
+$ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' 'MessageCount,MessagesAdded,Paused,Durable' %name.%Attribute=%Value
+"jms.queue.DLQ".MessageCount=611
+"jms.queue.DLQ".MessagesAdded=611
+"jms.queue.DLQ".Paused=false
+"jms.queue.DLQ".Durable=true
+"jms.queue.ExpiryQueue".MessageCount=0
+"jms.queue.ExpiryQueue".MessagesAdded=0
+"jms.queue.ExpiryQueue".Paused=false
+"jms.queue.ExpiryQueue".Durable=true
+```
+

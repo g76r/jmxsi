@@ -97,6 +97,9 @@ public class JmxShellInterface {
 				for (MBeanAttributeInfo info : infos) {
 					attrnames.add(info.getName());
 				}
+			} else if (attrname.indexOf(',') >= 0) {
+			 for (String token : attrname.split(","))
+				 attrnames.add(token);
 			} else {
 				attrnames.add(attrname);
 			}
