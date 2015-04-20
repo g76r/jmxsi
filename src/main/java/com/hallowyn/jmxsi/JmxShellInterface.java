@@ -1,23 +1,36 @@
 package com.hallowyn.jmxsi;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+// LATER add an option to disable CompositeData walk through
+// LATER support for several command at once, using stdin instead of command line
+
 public class JmxShellInterface {
+
+	private enum EvaluateState { Text, SimpleVariable, CurlyBracesVariable };
+	static final String VARIABLE_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
 
 	private JMXConnector jmxConnector = null;
 	private MBeanServerConnection mbeanServer = null;
-
+	
 	/**
 	 * jmxsi <command> [params...]
 	 * 
@@ -25,14 +38,14 @@ public class JmxShellInterface {
 	 * - help
 	 * - lsobj <url> <objectname> [outputformat]
 	 * - lsattr // FIXME 
-	 * - get <url> <objectname> <attributename> [outputformat] // FIXME what if composite
-	 * - set <url> <objectname> <attributename> <value> // FIXME what if composite
+	 * - get <url> <objectname> <attrname> [outputformat] // FIXME what if composite
+	 * - set <url> <objectname> <attrname> <value> // FIXME what if composite
 	 * - 
 	 * 
 	 * params
 	 * - url e.g. "service:jmx:rmi:///jndi/rmi://localhost:42/jmxrmi"
 	 * - objectname e.g. "org.hornetq:module=Core,type=Acceptor,*"
-	 * - outputformat e.g. "%Domain:type=%type,*", "%name", default: "%CanonicalName" for list and "%Attribute=%$" for get // FIXME
+	 * - outputformat e.g. "%Domain:type=%type,*", "%name", default: "%CanonicalName" for list and "%CompositeAttribute=%Value" for get // FIXME
 	 * - attributename
 	 * - value
 	 * 
@@ -41,10 +54,17 @@ public class JmxShellInterface {
 	 */
 	public static void main(String[] args) throws Exception {
 		String command = args.length >= 3 ? args[0] : "";
-		System.out.println("command: "+command+" args.length: "+args.length);
+		//System.out.println("command: "+command+" args.length: "+args.length);
 		if (command.equals("lsobj")) {
 			JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
-			jmxsi.lsobjCommand(args[2], args.length >= 4 ? args[3] : "%toString");
+			jmxsi.lsobjCommand(args[2], args.length >= 4 ? args[3] : "%CanonicalName");
+		} else if (command.equals("get")) {
+			if (args.length >= 4) {
+				JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
+				jmxsi.getCommand(args[2], args[3], args.length >= 5 ? args[4] : "%CompositeAttribute=%Value");
+			} else {
+				helpCommand();
+			}
 		} else {
 			helpCommand();
 		}
@@ -68,6 +88,49 @@ public class JmxShellInterface {
 		}
 	}
 
+	public void getCommand(String objectname, String attrname, String outputformat) throws Exception {
+		//System.out.println("getCommand");
+		for (ObjectInstance o : queryObjects(objectname)) {
+			MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getAttributes();
+			ArrayList<String> attrnames = new ArrayList<String>();
+			if (attrname.equals("*")) {
+				for (MBeanAttributeInfo info : infos) {
+					attrnames.add(info.getName());
+				}
+			} else {
+				attrnames.add(attrname);
+			}
+			AttributeList attrs = mbeanServer.getAttributes(o.getObjectName(), attrnames.toArray(new String[1]));
+			Map<String,String> context = new HashMap<String,String>();
+			for (Object tmp : attrs) {
+				Attribute attr = (Attribute)tmp;
+				context.put("Attribute", attr.getName()); // FIXME
+				context.put("CompositeAttribute", attr.getName()); // FIXME
+				String type = "unknown";
+				for (MBeanAttributeInfo info : infos) {
+					if (info.getName().equals(attr.getName())) {
+						type = info.getType();
+						break;
+					}
+				}
+				//System.out.println("class: "+attr.getClass().getName());
+				//System.out.println("type: "+type);
+				if (type.equals("javax.management.openmbean.CompositeData")) {
+					CompositeData cd = (CompositeData)attr.getValue();
+					Set<String> keys = cd.getCompositeType().keySet();
+					for (String key : keys) {
+						context.put("CompositeAttribute", attr.getName()+"."+key);
+						context.put("Value", cd.get(key) == null ? "" : cd.get(key).toString());
+						System.out.println(evaluateObject(o, outputformat, context));
+					}
+				} else {
+					context.put("Value", attr.getValue() == null ? "" : attr.getValue().toString());
+					System.out.println(evaluateObject(o, outputformat, context));
+				}
+			}
+		}
+	}
+
 	public List<ObjectInstance> queryObjects(String objectname) throws Exception {
         Set<ObjectInstance> set = mbeanServer.queryMBeans(new ObjectName(objectname), null);
         List<ObjectInstance> list = new LinkedList<ObjectInstance>(set);
@@ -79,12 +142,13 @@ public class JmxShellInterface {
         });
         return list;
 	}
-	
-	private enum EvaluateState { Text, SimpleVariable, CurlyBracesVariable };
-	static final String VARIABLE_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
 
 	static public String evaluateObject(ObjectInstance o, String outputformat) {
-		System.out.println("evaluateObject: "+o.toString()+" "+outputformat);
+		return evaluateObject(o, outputformat, null);
+	}
+
+	static public String evaluateObject(ObjectInstance o, String outputformat, Map<String,String> context) {
+		//System.out.println("evaluateObject: "+o.toString()+" "+outputformat);
 		StringBuffer value = new StringBuffer();
 		StringBuffer variable = new StringBuffer();
 		EvaluateState state = EvaluateState.Text;
@@ -114,7 +178,7 @@ public class JmxShellInterface {
 				if (VARIABLE_CHARS.indexOf(c) >= 0) {
 					variable.append(c);
 				} else {
-					value.append(evaluateObjectVariable(o, variable.toString()));
+					value.append(evaluateObjectVariable(o, variable.toString(), context));
 					variable.setLength(0);
 					--i;
 					state = EvaluateState.Text;
@@ -122,7 +186,7 @@ public class JmxShellInterface {
 				break;
 			case CurlyBracesVariable:
 				if (c == '}') {
-					value.append(evaluateObjectVariable(o, variable.toString()));
+					value.append(evaluateObjectVariable(o, variable.toString(), context));
 					variable.setLength(0);
 					state = EvaluateState.Text;
 				} else {
@@ -131,24 +195,24 @@ public class JmxShellInterface {
 				break;
 			}
 		}
-		System.out.println("a: "+value.toString());
 		if (variable.length() > 0)
-			value.append(evaluateObjectVariable(o, variable.toString()));
-		System.out.println("b: "+value.toString());
+			value.append(evaluateObjectVariable(o, variable.toString(), context));
 		return value.toString();
 	}
 	
-	static private final String evaluateObjectVariable(ObjectInstance o, String variablename) {
+	static private final String evaluateObjectVariable(ObjectInstance o, String variablename, Map<String,String> context) {
 		// FIXME
 		if (o == null)
 			return "";
-		System.out.println("evaluateObjectVariable: "+o.toString()+" "+variablename);
+		/*System.out.println("evaluateObjectVariable: "+o.toString()+" "+variablename);
 		System.out.println("keys: "+o.getObjectName().getKeyPropertyListString());
 		System.out.println("canoncial keys: "+o.getObjectName().getCanonicalKeyPropertyListString());
 		System.out.println("domain: "+o.getObjectName().getDomain());
 		System.out.println("object.toString: "+o.toString());
-		System.out.println("object.name.toString: "+o.getObjectName().toString());
-		if (variablename.equals("CanonicalName")) {
+		System.out.println("object.name.toString: "+o.getObjectName().toString());*/
+		if (context != null && context.containsKey(variablename)) {
+			return context.get(variablename);
+		} if (variablename.equals("CanonicalName")) {
 			return o.getObjectName().getCanonicalName();
 		} else if (variablename.equals("toString")) {
 			return o.getObjectName().toString();
