@@ -25,8 +25,6 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-
 // LATER add an option to disable CompositeData walk through
 // LATER support for several command at once, using stdin instead of command line
 // LATER support for set command
