@@ -1,5 +1,8 @@
 package com.hallowyn.jmxsi;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -77,8 +80,23 @@ public class JmxShellInterface {
 
 	}
 	
-	public static void helpCommand() {
-		System.out.println("help"); // FIXME		
+	public static void helpCommand() throws Exception {
+		try {
+			InputStream in = JmxShellInterface.class.getResourceAsStream("/README.md");
+			InputStreamReader r = new InputStreamReader(in, "UTF-8");
+			LineNumberReader lnr = new LineNumberReader(r);
+			boolean skip = false;
+			while(lnr.ready()) {
+				String line = lnr.readLine();
+				if ("Examples".equals(line)) {
+					skip = true;
+				}
+				if (!skip)
+					System.out.println(line);
+			}
+		} catch(Exception e) {
+			System.out.println("Syntax error.");
+		}
 		System.exit(1);
 	}
 
@@ -166,7 +184,7 @@ public class JmxShellInterface {
 				System.out.println("Operation \""+operationname+"\" has not a consistent number of params as compared to its signature.");
 				continue;				
 			}
-			System.out.println("operation: "+operationinfo.getName()+" returntype: "+operationinfo.getReturnType());
+			//System.out.println("operation: "+operationinfo.getName()+" returntype: "+operationinfo.getReturnType());
 			Object[] objects = new Object[params.length];
 			for (int i = 0; i < params.length; ++i) {
 				// FIXME converts params that are not strings
