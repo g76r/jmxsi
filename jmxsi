@@ -1,0 +1,2 @@
+#!/bin/sh
+exec java -cp target/classes:jmxsi.jar com.hallowyn.jmxsi.JmxShellInterface "$@"
