@@ -19,10 +19,10 @@ jmxsi command [params...]
 commands:
 - help
 - lsobj url objectname [outputformat]
-- lsattr url objectname [outputformat]
-- lsop url objectname [outputformat]
+- lsattr url objectname [outputformat] (NOT YET IMPLEMENTED)
+- lsop url objectname [outputformat] (NOT YET IMPLEMENTED)
 - get url objectname attrname [outputformat]
-- set url objectname attrname value
+- set url objectname attrname value (NOT YET IMPLEMENTED)
 - invoke url objectname operation [-o outputformat] [params]
  
 params:
