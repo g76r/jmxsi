@@ -12,6 +12,8 @@ import java.util.Set;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanOperationInfo;
+import javax.management.MBeanParameterInfo;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
@@ -22,6 +24,9 @@ import javax.management.remote.JMXServiceURL;
 
 // LATER add an option to disable CompositeData walk through
 // LATER support for several command at once, using stdin instead of command line
+// LATER support for set command
+// LATER support for lsattr command
+// LATER support for lsop command
 
 public class JmxShellInterface {
 
@@ -31,30 +36,10 @@ public class JmxShellInterface {
 	private JMXConnector jmxConnector = null;
 	private MBeanServerConnection mbeanServer = null;
 	
-	/**
-	 * jmxsi <command> [params...]
-	 * 
-	 * commands:
-	 * - help
-	 * - lsobj <url> <objectname> [outputformat]
-	 * - lsattr // FIXME 
-	 * - get <url> <objectname> <attrname> [outputformat] // FIXME what if composite
-	 * - set <url> <objectname> <attrname> <value> // FIXME what if composite
-	 * - 
-	 * 
-	 * params
-	 * - url e.g. "service:jmx:rmi:///jndi/rmi://localhost:42/jmxrmi"
-	 * - objectname e.g. "org.hornetq:module=Core,type=Acceptor,*"
-	 * - outputformat e.g. "%Domain:type=%type,*", "%name", default: "%CanonicalName" for list and "%CompositeAttribute=%Value" for get // FIXME
-	 * - attributename
-	 * - value
-	 * 
-	 * @param args
-	 * @throws Exception
+	/** Main method, see README file for usage.
 	 */
 	public static void main(String[] args) throws Exception {
 		String command = args.length >= 3 ? args[0] : "";
-		//System.out.println("command: "+command+" args.length: "+args.length);
 		if (command.equals("lsobj")) {
 			JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
 			jmxsi.lsobjCommand(args[2], args.length >= 4 ? args[3] : "%CanonicalName");
@@ -62,6 +47,22 @@ public class JmxShellInterface {
 			if (args.length >= 4) {
 				JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
 				jmxsi.getCommand(args[2], args[3], args.length >= 5 ? args[4] : "%CompositeAttribute=%Value");
+			} else {
+				helpCommand();
+			}
+		} else if (command.equals("invoke")) {
+			if (args.length >= 4) {
+				JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
+				int p = 4;
+				String outputformat = "%Result";
+				if (args.length >= 6 && "-o".equals(args[4])) {
+					outputformat = args[5];
+					p = 6;
+				}
+				String[] params = new String[args.length-p];
+				for (int i = p; i < args.length; ++i)
+					params[i-p] = args[i];
+				jmxsi.invokeCommand(args[2], args[3], params, outputformat);
 			} else {
 				helpCommand();
 			}
@@ -89,7 +90,6 @@ public class JmxShellInterface {
 	}
 
 	public void getCommand(String objectname, String attrname, String outputformat) throws Exception {
-		//System.out.println("getCommand");
 		for (ObjectInstance o : queryObjects(objectname)) {
 			MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getAttributes();
 			ArrayList<String> attrnames = new ArrayList<String>();
@@ -107,8 +107,8 @@ public class JmxShellInterface {
 			Map<String,String> context = new HashMap<String,String>();
 			for (Object tmp : attrs) {
 				Attribute attr = (Attribute)tmp;
-				context.put("Attribute", attr.getName()); // FIXME
-				context.put("CompositeAttribute", attr.getName()); // FIXME
+				context.put("Attribute", attr.getName());
+				context.put("CompositeAttribute", attr.getName());
 				String type = "unknown";
 				for (MBeanAttributeInfo info : infos) {
 					if (info.getName().equals(attr.getName())) {
@@ -116,8 +116,6 @@ public class JmxShellInterface {
 						break;
 					}
 				}
-				//System.out.println("class: "+attr.getClass().getName());
-				//System.out.println("type: "+type);
 				if (type.equals("javax.management.openmbean.CompositeData")) {
 					CompositeData cd = (CompositeData)attr.getValue();
 					Set<String> keys = cd.getCompositeType().keySet();
@@ -131,6 +129,53 @@ public class JmxShellInterface {
 					System.out.println(evaluateObject(o, outputformat, context));
 				}
 			}
+		}
+	}
+
+	public void invokeCommand(String objectname, String operationname, String[] params, String outputformat) throws Exception {
+		for (ObjectInstance o : queryObjects(objectname)) {
+			MBeanOperationInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getOperations();
+			MBeanOperationInfo operationinfo = null;
+			ArrayList<String> signature = new ArrayList<String>();
+			for (MBeanOperationInfo info: infos) {
+				MBeanParameterInfo[] paraminfos = info.getSignature();
+				StringBuffer name = new StringBuffer();
+				name.append(info.getName()).append('(');
+				boolean first = true;
+				signature.clear();
+				for (MBeanParameterInfo paraminfo : paraminfos) {
+					if (first)
+						first = false;
+					else
+						name.append(',');
+					name.append(paraminfo.getType());
+					signature.add(paraminfo.getType());
+				}
+				name.append(')');
+				if (operationname.equals(name.toString())) {
+					operationinfo = info;
+					break;
+				}
+			}
+			if (operationinfo == null) {
+				System.out.println("Operation \""+operationname+"\" not found on object \""
+						+o.getObjectName().getCanonicalName()+"\".");
+				continue;
+			}
+			if (signature.size() != params.length) {
+				System.out.println("Operation \""+operationname+"\" has not a consistent number of params as compared to its signature.");
+				continue;				
+			}
+			System.out.println("operation: "+operationinfo.getName()+" returntype: "+operationinfo.getReturnType());
+			Object[] objects = new Object[params.length];
+			for (int i = 0; i < params.length; ++i) {
+				// FIXME converts params that are not strings
+				objects[i] = params[i];
+			}
+			Object result = mbeanServer.invoke(o.getObjectName(), operationinfo.getName(), objects, signature.toArray(new String[signature.size()]));
+			Map<String,String> context = new HashMap<String,String>();
+			context.put("Result", (result == null ? "null" : result.toString()));
+			System.out.println(evaluateObject(o, outputformat, context));
 		}
 	}
 
@@ -150,8 +195,10 @@ public class JmxShellInterface {
 		return evaluateObject(o, outputformat, null);
 	}
 
+	/** Evaluate an object following an outputformat with % variable patterns.
+	 * e.g. "%CanonicalName" "type=%type,name=%name,*" "%Result" "%{name}_%{type}"
+	 */
 	static public String evaluateObject(ObjectInstance o, String outputformat, Map<String,String> context) {
-		//System.out.println("evaluateObject: "+o.toString()+" "+outputformat);
 		StringBuffer value = new StringBuffer();
 		StringBuffer variable = new StringBuffer();
 		EvaluateState state = EvaluateState.Text;
@@ -204,15 +251,8 @@ public class JmxShellInterface {
 	}
 	
 	static private final String evaluateObjectVariable(ObjectInstance o, String variablename, Map<String,String> context) {
-		// FIXME
 		if (o == null)
 			return "";
-		/*System.out.println("evaluateObjectVariable: "+o.toString()+" "+variablename);
-		System.out.println("keys: "+o.getObjectName().getKeyPropertyListString());
-		System.out.println("canoncial keys: "+o.getObjectName().getCanonicalKeyPropertyListString());
-		System.out.println("domain: "+o.getObjectName().getDomain());
-		System.out.println("object.toString: "+o.toString());
-		System.out.println("object.name.toString: "+o.getObjectName().toString());*/
 		if (context != null && context.containsKey(variablename)) {
 			return context.get(variablename);
 		} if (variablename.equals("CanonicalName")) {
@@ -224,6 +264,5 @@ public class JmxShellInterface {
 		} else {
 			return o.getObjectName().getKeyProperty(variablename);
 		}
-		//return new String();
 	}
 }

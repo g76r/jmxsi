@@ -1,13 +1,56 @@
+JMX Shell Interface (jmxsi)
+===========================
+
+JMX Shell Interface (jmxsi) is a command line interface JMX client enabling
+to access a local or remote JVM to read and change JMX attributes and to
+invoke JMX operations.
+
+It supports getting easily composite attributes (such as HeapMemoryUsage) and
+bulk getting/setting/invoking on several objects at a time using * in object
+name.
 
 
+Usage
+=====
 
+jmxsi <command> [params...]
 
-
+commands:
+- help
+- lsobj <url> <objectname> [outputformat]
+- lsattr <url> <objectname> [outputformat]
+- lsop <url> <objectname> [outputformat]
+- get <url> <objectname> <attrname> [outputformat]
+- set <url> <objectname> <attrname> <value>
+- invoke <url> <objectname> <operation> [-o <outputformat>] [params]
+ 
+params:
+- url: JMX/RMI URL e.g. "service:jmx:rmi:///jndi/rmi://localhost:42/jmxrmi"
+- objectname: JMX object name
+        e.g.: "java.lang:type=Memory"
+              "org.hornetq:module=Core,type=Acceptor,*"
+- outputformat: pattern used for output, with RMI object properties variable
+                substitution and special variables substitution (see examples
+                and default value for special variables)
+        e.g.: "%Domain:type=%type,*", "%name"
+     default: "%CanonicalName" for lsobj
+              "%CompositeAttribute=%Value" for get
+              "%CompositeAttribute" for lsattr
+              "%Result" for invoke
+- attributename: attribute name or comma-separated enumeration or *
+        e.g.: "HeapMemoryUsage"
+              "HeapMemoryUsage,NonHeapMemoryUsage"
+              "*"
+- value
+- operation: operation name and parameters signature
+        e.g.: "gc()"
+              "getThreadUserTime(long)"
+              "foobar(java.lang.String,boolean)"
+- params
 
 
 Examples
 ========
-
 
 Getting HornetQ queues list:
 ```
@@ -99,5 +142,18 @@ $ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq
 "jms.queue.ExpiryQueue".MessagesAdded=0
 "jms.queue.ExpiryQueue".Paused=false
 "jms.queue.ExpiryQueue".Durable=true
+```
+
+Counting messages in very HornetQ queue:
+```
+$ ./jmxsi invoke "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' 'countMessages(java.lang.String)' -o '%name: %Result' ''
+"jms.queue.DLQ": 611
+"jms.queue.ExpiryQueue": 0
+$
+```
+
+Pause every HornetQ queue:
+```
+./jmxsi invoke "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' 'pause()'
 ```
 
