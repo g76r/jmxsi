@@ -25,6 +25,8 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
+
 // LATER add an option to disable CompositeData walk through
 // LATER support for several command at once, using stdin instead of command line
 // LATER support for set command
@@ -184,11 +186,18 @@ public class JmxShellInterface {
 				System.out.println("Operation \""+operationname+"\" has not a consistent number of params as compared to its signature.");
 				continue;				
 			}
-			//System.out.println("operation: "+operationinfo.getName()+" returntype: "+operationinfo.getReturnType());
 			Object[] objects = new Object[params.length];
 			for (int i = 0; i < params.length; ++i) {
-				// FIXME converts params that are not strings
-				objects[i] = params[i];
+				String type = operationinfo.getSignature()[i].getType();
+				// LATER support more param types
+				if ("long".equals(type))
+					objects[i] = new Long(params[i]).longValue();
+				else if ("int".equals(type))
+					objects[i] = new Integer(params[i]).intValue();
+				else if ("boolean".equals(type))
+					objects[i] = new Boolean(params[i]).booleanValue();
+				else
+					objects[i] = params[i];
 			}
 			Object result = mbeanServer.invoke(o.getObjectName(), operationinfo.getName(), objects, signature.toArray(new String[signature.size()]));
 			Map<String,String> context = new HashMap<String,String>();
