@@ -23,7 +23,7 @@ commands:
 - lsop url objectname [outputformat] (NOT YET IMPLEMENTED)
 - get url objectname attrname [outputformat]
 - set url objectname attrname value (NOT YET IMPLEMENTED)
-- invoke url objectname operation [-o outputformat] [params]
+- invoke url objectname operation [-o outputformat] [operationparams]
  
 params:
 - url: JMX/RMI URL e.g. "service:jmx:rmi:///jndi/rmi://localhost:42/jmxrmi"
@@ -47,18 +47,33 @@ params:
         e.g.: "gc()"
               "getThreadUserTime(long)"
               "foobar(java.lang.String,boolean)"
-- params
+- operationparams
 ```
 
 
 Examples
 ========
 
-Getting HornetQ queues list:
+Standard Java Examples
+----------------------
+
+Getting all java.lang objects list:
 ```
-$ ./jmxsi lsobj "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' %name
-"jms.queue.DLQ"
-"jms.queue.ExpiryQueue"
+$ ./jmxsi lsobj "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" "java.lang:*"
+java.lang:type=ClassLoading
+java.lang:type=Compilation
+java.lang:name=Copy,type=GarbageCollector
+java.lang:name=MarkSweepCompact,type=GarbageCollector
+java.lang:type=Memory
+java.lang:name=CodeCacheManager,type=MemoryManager
+java.lang:name=Code Cache,type=MemoryPool
+java.lang:name=Eden Space,type=MemoryPool
+java.lang:name=Perm Gen,type=MemoryPool
+java.lang:name=Survivor Space,type=MemoryPool
+java.lang:name=Tenured Gen,type=MemoryPool
+java.lang:type=OperatingSystem
+java.lang:type=Runtime
+java.lang:type=Threading
 $
 ```
 
@@ -86,6 +101,31 @@ NonHeapMemoryUsage.init=24313856
 NonHeapMemoryUsage.max=224395264
 NonHeapMemoryUsage.used=25460376
 ObjectName=java.lang:type=Memory
+$
+```
+
+Getting all java Runtime attributes:
+```
+$ $ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" "java.lang:type=Runtime,*" '*'
+BootClassPathSupported=true
+VmName=OpenJDK 64-Bit Server VM
+VmVendor=Oracle Corporation
+VmVersion=24.65-b04
+LibraryPath=bin
+BootClassPath=/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/resources.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/sunrsasign.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/jsse.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/jce.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/charsets.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rhino.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/jfr.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/classes
+StartTime=1429520976615
+(...)
+$
+```
+
+HornetQ Examples
+----------------
+
+Getting HornetQ queues list:
+```
+$ ./jmxsi lsobj "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' %name
+"jms.queue.DLQ"
+"jms.queue.ExpiryQueue"
 $
 ```
 
@@ -156,6 +196,58 @@ $
 
 Pause every HornetQ queue:
 ```
-./jmxsi invoke "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' 'pause()'
+$ ./jmxsi invoke "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' 'pause()'
+null
+null
+$
 ```
+
+Remove all the messages from an HornetQ queue ("jms.queue.ExpiryQueue"):
+```
+$ ./jmxsi invoke "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,name="jms.queue.ExpiryQueue",*' 'removeMessages(java.lang.String)' ''
+13
+$
+```
+
+List all messages in an HornetQ queue ("jms.queue.DLQ"):
+```
+$ ./jmxsi invoke "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,name="jms.queue.DLQ",*' 'listMessagesAsJSON(java.lang.String)' '' | jsonlint --format
+[
+(...)
+  { "address" : "jms.queue.DLQ",
+    "durable" : true,
+    "expiration" : 0,
+    "messageID" : 830,
+    "priority" : 4,
+    "timestamp" : 1413553824763,
+    "type" : 4,
+    "userID" : "ID:8b76bd6c-5604-11e4-8715-5d754c477a25"
+  },
+  { "address" : "jms.queue.DLQ",
+    "durable" : true,
+    "expiration" : 0,
+    "messageID" : 829,
+    "priority" : 4,
+    "timestamp" : 1413553824766,
+    "type" : 4,
+    "userID" : "ID:8b77329d-5604-11e4-8715-5d754c477a25"
+  }
+]
+$
+```
+
+Compilation And Packaging
+=========================
+
+JMX Shell Interface is not (yet) available with released packages, however,
+provided you've got a Unix box with a JDK, it can very easily be built and
+installed that way:
+
+```
+git clone https://github.com/g76r/jmxsi.git
+cd jmxsi
+make
+```
+
+There are no dependencies apart from the JVM.
 
