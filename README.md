@@ -13,16 +13,17 @@ name.
 Usage
 =====
 
-jmxsi <command> [params...]
+```
+jmxsi command [params...]
 
 commands:
 - help
-- lsobj <url> <objectname> [outputformat]
-- lsattr <url> <objectname> [outputformat]
-- lsop <url> <objectname> [outputformat]
-- get <url> <objectname> <attrname> [outputformat]
-- set <url> <objectname> <attrname> <value>
-- invoke <url> <objectname> <operation> [-o <outputformat>] [params]
+- lsobj url objectname [outputformat]
+- lsattr url objectname [outputformat]
+- lsop url objectname [outputformat]
+- get url objectname attrname [outputformat]
+- set url objectname attrname value
+- invoke url objectname operation [-o outputformat] [params]
  
 params:
 - url: JMX/RMI URL e.g. "service:jmx:rmi:///jndi/rmi://localhost:42/jmxrmi"
@@ -47,6 +48,7 @@ params:
               "getThreadUserTime(long)"
               "foobar(java.lang.String,boolean)"
 - params
+```
 
 
 Examples
