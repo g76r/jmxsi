@@ -39,8 +39,7 @@ public class JmxShellInterface {
 	private JMXConnector jmxConnector = null;
 	private MBeanServerConnection mbeanServer = null;
 	
-	/** Main method, see README file for usage.
-	 */
+	/** Main method, see README file for usage. */
 	public static void main(String[] args) throws Exception {
 		String command = args.length >= 3 ? args[0] : "";
 		if (command.equals("lsobj")) {
@@ -80,8 +79,10 @@ public class JmxShellInterface {
 
 	}
 	
+	/** Handler for "help" command. */
 	public static void helpCommand() throws Exception {
 		try {
+			// Print the output of README file untill "Examples" section
 			InputStream in = JmxShellInterface.class.getResourceAsStream("/README.md");
 			InputStreamReader r = new InputStreamReader(in, "UTF-8");
 			LineNumberReader lnr = new LineNumberReader(r);
@@ -100,15 +101,27 @@ public class JmxShellInterface {
 		System.exit(1);
 	}
 
+	/** Handler for "lsobj" command. */
 	public void lsobjCommand(String objectname, String outputformat) throws Exception {
-		for (ObjectInstance o : queryObjects(objectname)) {
+		List<ObjectInstance> objectinstances = queryObjects(objectname);
+		if (objectinstances.size() == 0) {
+			System.out.println("No such objects found.");
+			System.exit(1);
+		}
+		for (ObjectInstance o : objectinstances) {
 			String output = evaluateObject(o, outputformat);
 			System.out.println(output);
 		}
 	}
 
+	/** Handler for "get" command. */
 	public void getCommand(String objectname, String attrname, String outputformat) throws Exception {
-		for (ObjectInstance o : queryObjects(objectname)) {
+		List<ObjectInstance> objectinstances = queryObjects(objectname);
+		if (objectinstances.size() == 0) {
+			System.out.println("No such objects found.");
+			System.exit(1);
+		}
+		for (ObjectInstance o : objectinstances) {
 			MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getAttributes();
 			ArrayList<String> attrnames = new ArrayList<String>();
 			if (attrname.equals("*")) {
@@ -150,8 +163,14 @@ public class JmxShellInterface {
 		}
 	}
 
+	/** Handler for "invoke" command. */
 	public void invokeCommand(String objectname, String operationname, String[] params, String outputformat) throws Exception {
-		for (ObjectInstance o : queryObjects(objectname)) {
+		List<ObjectInstance> objectinstances = queryObjects(objectname);
+		if (objectinstances.size() == 0) {
+			System.out.println("No such objects found.");
+			System.exit(1);
+		}
+		for (ObjectInstance o : objectinstances) {
 			MBeanOperationInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getOperations();
 			MBeanOperationInfo operationinfo = null;
 			ArrayList<String> signature = new ArrayList<String>();
@@ -204,6 +223,9 @@ public class JmxShellInterface {
 		}
 	}
 
+	/** Get a sorted list of ObjectInstance given the objectname query string.
+	 * @param objectname e.g. "java.lang:type=Memory" or "org.hornetq:module=Core,type=Acceptor,*"
+	 */
 	public List<ObjectInstance> queryObjects(String objectname) throws Exception {
         Set<ObjectInstance> set = mbeanServer.queryMBeans(new ObjectName(objectname), null);
         List<ObjectInstance> list = new LinkedList<ObjectInstance>(set);
@@ -216,12 +238,15 @@ public class JmxShellInterface {
         return list;
 	}
 
+	/** Convenience method with empty context. */
 	static public String evaluateObject(ObjectInstance o, String outputformat) {
 		return evaluateObject(o, outputformat, null);
 	}
 
 	/** Evaluate an object following an outputformat with % variable patterns.
-	 * e.g. "%CanonicalName" "type=%type,name=%name,*" "%Result" "%{name}_%{type}"
+	 * @param o ObjectInstance being evaluated
+	 * @param outputformat e.g. "%CanonicalName" "type=%type,name=%name,*" "%Result" "%{name}_%{type}"
+	 * @param context variable,value map in addition to ObjectInstance properties (e.g. "type") and hard-wired variables (e.g. "%CanonicalName")
 	 */
 	static public String evaluateObject(ObjectInstance o, String outputformat, Map<String,String> context) {
 		StringBuffer value = new StringBuffer();
@@ -274,7 +299,9 @@ public class JmxShellInterface {
 			value.append(evaluateObjectVariable(o, variable.toString(), context));
 		return value.toString();
 	}
-	
+
+	/** Method internally used by evaluateObject().
+	 * Do not call from elsewhere. */
 	static private final String evaluateObjectVariable(ObjectInstance o, String variablename, Map<String,String> context) {
 		if (o == null)
 			return "";
