@@ -19,7 +19,7 @@ jmxsi command [params...]
 commands:
 - help
 - lsobj url objectname [outputformat]
-- lsattr url objectname [outputformat] (NOT YET IMPLEMENTED)
+- lsattr url objectname [attrname] [outputformat]
 - lsop url objectname [outputformat] (NOT YET IMPLEMENTED)
 - get url objectname attrname [outputformat]
 - set url objectname attrname value [outputformat]
@@ -35,9 +35,10 @@ params:
                 and default value for special variables)
         e.g.: "%Domain:type=%type,*", "%name"
      default: "%CanonicalName" for lsobj
-              "%CompositeAttribute=%Value" for get
+              "%CompositeAttribute=%Value" for get and set
               "%CompositeAttribute" for lsattr
               "%Result" for invoke
+              "%CompositeAttribute: %Type" for lsattr
 - attributename: attribute name or comma-separated enumeration or *
         e.g.: "HeapMemoryUsage"
               "HeapMemoryUsage,NonHeapMemoryUsage"
@@ -122,6 +123,35 @@ Setting java classloading verbosity to true:
 ```
 $ ./jmxsi set "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'java.lang:type=ClassLoading' Verbose true
 Verbose=true
+$
+```
+
+Listing attributes of java Memory object:
+```
+$ ./jmxsi lsattr "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'java.lang:type=Memory'
+HeapMemoryUsage: javax.management.openmbean.CompositeData
+NonHeapMemoryUsage: javax.management.openmbean.CompositeData
+ObjectName: javax.management.ObjectName
+ObjectPendingFinalizationCount: int
+Verbose: boolean
+$
+```
+
+Listing attributes of all standard java objects:
+```
+$ ./jmxsi lsattr "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'java.lang:*' '*' '%CanonicalName %Attribute: %Type'
+java.lang:type=ClassLoading LoadedClassCount: int
+java.lang:type=ClassLoading ObjectName: javax.management.ObjectName
+java.lang:type=ClassLoading TotalLoadedClassCount: long
+java.lang:type=ClassLoading UnloadedClassCount: long
+java.lang:type=ClassLoading Verbose: boolean
+java.lang:type=Compilation CompilationTimeMonitoringSupported: boolean
+java.lang:type=Compilation Name: java.lang.String
+java.lang:type=Compilation ObjectName: javax.management.ObjectName
+java.lang:type=Compilation TotalCompilationTime: long
+java.lang:name=Copy,type=GarbageCollector CollectionCount: long
+java.lang:name=Copy,type=GarbageCollector CollectionTime: long
+(...)
 $
 ```
 

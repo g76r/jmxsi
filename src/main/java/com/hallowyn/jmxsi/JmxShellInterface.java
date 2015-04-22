@@ -27,7 +27,6 @@ import javax.management.remote.JMXServiceURL;
 
 // LATER add an option to disable CompositeData walk through
 // LATER support for several command at once, using stdin instead of command line
-// LATER support for lsattr command
 // LATER support for lsop command
 
 public class JmxShellInterface {
@@ -44,6 +43,10 @@ public class JmxShellInterface {
 		if (command.equals("lsobj")) {
 			JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
 			jmxsi.lsobjCommand(args[2], args.length >= 4 ? args[3] : "%CanonicalName");
+		} else if (command.equals("lsattr")) {
+			JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
+			jmxsi.lsattrCommand(args[2], args.length >= 4 ? args[3] : "*",
+					args.length >= 5 ? args[4] : "%CompositeAttribute: %Type");
 		} else if (command.equals("get")) {
 			if (args.length >= 4) {
 				JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
@@ -120,8 +123,8 @@ public class JmxShellInterface {
 		}
 	}
 
-	/** Handler for "get" command. */
-	public void getCommand(String objectname, String attrname, String outputformat) throws Exception {
+	/** Handler for "lsattr" command. */
+	public void lsattrCommand(String objectname, String attrname, String outputformat) throws Exception {
 		List<ObjectInstance> objectinstances = queryObjects(objectname);
 		if (objectinstances.size() == 0) {
 			System.out.println("No such objects found.");
@@ -129,18 +132,7 @@ public class JmxShellInterface {
 		}
 		for (ObjectInstance o : objectinstances) {
 			MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getAttributes();
-			ArrayList<String> attrnames = new ArrayList<String>();
-			if (attrname.equals("*")) {
-				for (MBeanAttributeInfo info : infos) {
-					attrnames.add(info.getName());
-				}
-			} else if (attrname.indexOf(',') >= 0) {
-			 for (String token : attrname.split(","))
-				 attrnames.add(token);
-			} else {
-				attrnames.add(attrname);
-			}
-			AttributeList attrs = mbeanServer.getAttributes(o.getObjectName(), attrnames.toArray(new String[1]));
+			AttributeList attrs = queryAttributes(o.getObjectName(), attrname);
 			Map<String,String> context = new HashMap<String,String>();
 			for (Object tmp : attrs) {
 				Attribute attr = (Attribute)tmp;
@@ -153,6 +145,36 @@ public class JmxShellInterface {
 						break;
 					}
 				}
+				context.put("Type", type);
+				String output = evaluateObject(o, outputformat, context);
+				System.out.println(output);
+			}
+		}
+	}
+	
+	/** Handler for "get" command. */
+	public void getCommand(String objectname, String attrname, String outputformat) throws Exception {
+		List<ObjectInstance> objectinstances = queryObjects(objectname);
+		if (objectinstances.size() == 0) {
+			System.out.println("No such objects found.");
+			System.exit(1);
+		}
+		for (ObjectInstance o : objectinstances) {
+			MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getAttributes();
+			AttributeList attrs = queryAttributes(o.getObjectName(), attrname);
+			Map<String,String> context = new HashMap<String,String>();
+			for (Object tmp : attrs) {
+				Attribute attr = (Attribute)tmp;
+				context.put("Attribute", attr.getName());
+				context.put("CompositeAttribute", attr.getName());
+				String type = "unknown";
+				for (MBeanAttributeInfo info : infos) {
+					if (info.getName().equals(attr.getName())) {
+						type = info.getType();
+						break;
+					}
+				}
+				context.put("Type", type);
 				if (type.equals("javax.management.openmbean.CompositeData")) {
 					CompositeData cd = (CompositeData)attr.getValue();
 					Set<String> keys = cd.getCompositeType().keySet();
@@ -178,18 +200,7 @@ public class JmxShellInterface {
 		}
 		for (ObjectInstance o : objectinstances) {
 			MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getAttributes();
-			ArrayList<String> attrnames = new ArrayList<String>();
-			if (attrname.equals("*")) {
-				for (MBeanAttributeInfo info : infos) {
-					attrnames.add(info.getName());
-				}
-			} else if (attrname.indexOf(',') >= 0) {
-			 for (String token : attrname.split(","))
-				 attrnames.add(token);
-			} else {
-				attrnames.add(attrname);
-			}
-			AttributeList attrs = mbeanServer.getAttributes(o.getObjectName(), attrnames.toArray(new String[1]));
+			AttributeList attrs = queryAttributes(o.getObjectName(), attrname);
 			Map<String,String> context = new HashMap<String,String>();
 			for (Object tmp : attrs) {
 				Attribute attr = (Attribute)tmp;
@@ -203,6 +214,7 @@ public class JmxShellInterface {
 						break;
 					}
 				}
+				context.put("Type", type);
 				if ("javax.management.openmbean.CompositeData".equals(type)) {
 					throw new Exception("setting CompositeData attributes is not supported.");
 				} else {
@@ -286,6 +298,33 @@ public class JmxShellInterface {
         	@Override
         	public int compare(final ObjectInstance o1, final ObjectInstance o2) {
         		return o1.getObjectName().compareTo(o2.getObjectName());
+        	}
+        });
+        return list;
+	}
+	
+	/** Get a sorted list of Attributes given the objectname query string and an attrname string.
+	 * @param objectname e.g. "java.lang:type=Memory" or "org.hornetq:module=Core,type=Acceptor,*"
+	 * @param attrname e.g. "HeapMemoryUsage" or "HeapMemoryUsage,NonHeapMemoryUsage" or "*"
+	 */
+	public AttributeList queryAttributes(ObjectName objectname, String attrname) throws Exception {
+		MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(objectname).getAttributes();
+		ArrayList<String> attrnames = new ArrayList<String>();
+		if (attrname.equals("*")) {
+			for (MBeanAttributeInfo info : infos) {
+				attrnames.add(info.getName());
+			}
+		} else if (attrname.indexOf(',') >= 0) {
+		 for (String token : attrname.split(","))
+			 attrnames.add(token);
+		} else {
+			attrnames.add(attrname);
+		}
+		AttributeList list = mbeanServer.getAttributes(objectname, attrnames.toArray(new String[1]));
+        Collections.sort(list, new Comparator<Object>() {
+        	@Override
+        	public int compare(final Object o1, final Object o2) {
+        		return ((Attribute)o1).getName().compareTo(((Attribute)o2).getName());
         	}
         });
         return list;
