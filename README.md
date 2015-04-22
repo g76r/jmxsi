@@ -9,7 +9,6 @@ It supports getting easily composite attributes (such as HeapMemoryUsage) and
 bulk getting/setting/invoking on several objects at a time using * in object
 name.
 
-
 Usage
 =====
 
@@ -51,7 +50,6 @@ params:
               "foobar(java.lang.String,boolean)"
 - operationparams
 ```
-
 
 Examples
 ========
@@ -293,6 +291,28 @@ $ ./jmxsi invoke "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.horn
 $
 ```
 
+Statsd / Graphite metrics feeding from HornetQ JMX attributes
+-------------------------------------------------------------
+
+Getting 4 attributes for every HornetQ queue, and formating them using statsd
+gauge format in a one-line shell command:
+```
+$ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'org.hornetq:module=Core,type=Queue,*' 'MessageCount,MessagesAdded,Paused,Durable' "middleware.hornetq.queue.%name.%Attribute:%Value|g" | sed 's/"jms.queue.//;s/"//;s/true|/1|/;s/false|/0|/'
+middleware.hornetq.queue.DLQ.Durable:1|g
+middleware.hornetq.queue.DLQ.MessageCount:611|g
+middleware.hornetq.queue.DLQ.MessagesAdded:611|g
+middleware.hornetq.queue.DLQ.Paused:1|g
+middleware.hornetq.queue.ExpiryQueue.Durable:1|g
+middleware.hornetq.queue.ExpiryQueue.MessageCount:0|g
+middleware.hornetq.queue.ExpiryQueue.MessagesAdded:0|g
+middleware.hornetq.queue.ExpiryQueue.Paused:1|g
+$
+```
+
+This command could even be redirected to statsd through
+bash's >/dev/udp/server/port redirection or piped to netcat to directly feed
+statsd.
+
 Compilation And Packaging
 =========================
 
@@ -307,7 +327,6 @@ make
 ```
 
 There are no dependencies apart from the JVM.
-
 
 Secondary tools
 ===============
