@@ -22,7 +22,7 @@ commands:
 - lsattr url objectname [outputformat] (NOT YET IMPLEMENTED)
 - lsop url objectname [outputformat] (NOT YET IMPLEMENTED)
 - get url objectname attrname [outputformat]
-- set url objectname attrname value (NOT YET IMPLEMENTED)
+- set url objectname attrname value [outputformat]
 - invoke url objectname operation [-o outputformat] [operationparams]
  
 params:
@@ -106,7 +106,7 @@ $
 
 Getting all java Runtime attributes:
 ```
-$ $ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" "java.lang:type=Runtime,*" '*'
+$ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" "java.lang:type=Runtime,*" '*'
 BootClassPathSupported=true
 VmName=OpenJDK 64-Bit Server VM
 VmVendor=Oracle Corporation
@@ -115,6 +115,13 @@ LibraryPath=bin
 BootClassPath=/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/resources.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rt.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/sunrsasign.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/jsse.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/jce.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/charsets.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/rhino.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/jfr.jar:/usr/lib/jvm/java-7-openjdk-amd64/jre/classes
 StartTime=1429520976615
 (...)
+$
+```
+
+Setting java classloading verbosity to true:
+```
+$ ./jmxsi set "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'java.lang:type=ClassLoading' Verbose true
+Verbose=true
 $
 ```
 

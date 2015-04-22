@@ -27,7 +27,6 @@ import javax.management.remote.JMXServiceURL;
 
 // LATER add an option to disable CompositeData walk through
 // LATER support for several command at once, using stdin instead of command line
-// LATER support for set command
 // LATER support for lsattr command
 // LATER support for lsop command
 
@@ -49,6 +48,13 @@ public class JmxShellInterface {
 			if (args.length >= 4) {
 				JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
 				jmxsi.getCommand(args[2], args[3], args.length >= 5 ? args[4] : "%CompositeAttribute=%Value");
+			} else {
+				helpCommand();
+			}
+		} else if (command.equals("set")) {
+			if (args.length >= 5) {
+				JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
+				jmxsi.setCommand(args[2], args[3], args[4], args.length >= 6 ? args[5] : "%CompositeAttribute=%Value");
 			} else {
 				helpCommand();
 			}
@@ -163,6 +169,50 @@ public class JmxShellInterface {
 		}
 	}
 
+	/** Handler for "set" command. */
+	public void setCommand(String objectname, String attrname, String value, String outputformat) throws Exception {
+		List<ObjectInstance> objectinstances = queryObjects(objectname);
+		if (objectinstances.size() == 0) {
+			System.out.println("No such objects found.");
+			System.exit(1);
+		}
+		for (ObjectInstance o : objectinstances) {
+			MBeanAttributeInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getAttributes();
+			ArrayList<String> attrnames = new ArrayList<String>();
+			if (attrname.equals("*")) {
+				for (MBeanAttributeInfo info : infos) {
+					attrnames.add(info.getName());
+				}
+			} else if (attrname.indexOf(',') >= 0) {
+			 for (String token : attrname.split(","))
+				 attrnames.add(token);
+			} else {
+				attrnames.add(attrname);
+			}
+			AttributeList attrs = mbeanServer.getAttributes(o.getObjectName(), attrnames.toArray(new String[1]));
+			Map<String,String> context = new HashMap<String,String>();
+			for (Object tmp : attrs) {
+				Attribute attr = (Attribute)tmp;
+				context.put("Attribute", attr.getName());
+				context.put("CompositeAttribute", attr.getName());
+				context.put("Value", value);
+				String type = "unknown";
+				for (MBeanAttributeInfo info : infos) {
+					if (info.getName().equals(attr.getName())) {
+						type = info.getType();
+						break;
+					}
+				}
+				if ("javax.management.openmbean.CompositeData".equals(type)) {
+					throw new Exception("setting CompositeData attributes is not supported.");
+				} else {
+					mbeanServer.setAttribute(o.getObjectName(), new Attribute(attr.getName(), convertValueToObject(value, type)));
+				}
+				System.out.println(evaluateObject(o, outputformat, context));
+			}
+		}
+	}
+
 	/** Handler for "invoke" command. */
 	public void invokeCommand(String objectname, String operationname, String[] params, String outputformat) throws Exception {
 		List<ObjectInstance> objectinstances = queryObjects(objectname);
@@ -206,21 +256,24 @@ public class JmxShellInterface {
 			Object[] objects = new Object[params.length];
 			for (int i = 0; i < params.length; ++i) {
 				String type = operationinfo.getSignature()[i].getType();
-				// LATER support more param types
-				if ("long".equals(type))
-					objects[i] = new Long(params[i]).longValue();
-				else if ("int".equals(type))
-					objects[i] = new Integer(params[i]).intValue();
-				else if ("boolean".equals(type))
-					objects[i] = new Boolean(params[i]).booleanValue();
-				else
-					objects[i] = params[i];
+				objects[i] = convertValueToObject(params[i], type);
 			}
 			Object result = mbeanServer.invoke(o.getObjectName(), operationinfo.getName(), objects, signature.toArray(new String[signature.size()]));
 			Map<String,String> context = new HashMap<String,String>();
 			context.put("Result", (result == null ? "null" : result.toString()));
 			System.out.println(evaluateObject(o, outputformat, context));
 		}
+	}
+
+	private final static Object convertValueToObject(String value, String type) {
+		// LATER support more param types
+		if ("long".equals(type))
+			return new Long(value).longValue();
+		else if ("int".equals(type))
+			return new Integer(value).intValue();
+		else if ("boolean".equals(type))
+			return new Boolean(value).booleanValue();
+		return value; // default to String
 	}
 
 	/** Get a sorted list of ObjectInstance given the objectname query string.
