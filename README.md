@@ -251,3 +251,49 @@ make
 
 There are no dependencies apart from the JVM.
 
+
+Secondary tools
+===============
+
+Some higher level specialized tools can be built over jmxsi for exposing a more
+human-friendly interface than JMX for specialized JVM processes such as Tomcat
+or HornetQ.
+
+This one is provided along with jmxsi:
+
+hornetqsi
+---------
+
+```
+usage:
+  ./hornetqsi queue list
+    list all existing JMS queues
+  ./hornetqsi queue pause <queuenames>
+    pause one or several queues, messages will become invisible to consumers
+    until the queue is resumed
+    e.g. ./hornetqsi queue pause DLQ,ExpiryQueue
+  ./hornetqsi queue resume <queuenames>
+    resume one or several queues
+    e.g. ./hornetqsi queue resume DLQ
+  ./hornetqsi queue create <queuenames>
+    create new JMS durable queues
+    e.g. ./hornetqsi queue create foo
+  ./hornetqsi queue destroy <queuenames>
+    destroy existing JMS queues
+    e.g. ./hornetqsi queue destroy foo
+  ./hornetqsi queue purge <queuenames>
+    remove all messages from given JMS queues
+    e.g. ./hornetqsi queue purge ExpiryQueue
+  ./hornetqsi message list <queuenames>
+    list all messages currently in given JMS queues
+    e.g. ./hornetqsi queue list DLQ
+  ./hornetqsi message first <queuenames>
+    list first message currently in given JMS queues
+    e.g. ./hornetqsi message first DLQ
+  ./hornetqsi message count [<queuenames>]
+    give current message count in given JMS queues, or in every queue if no
+    queue name is specified
+    e.g. ./hornetqsi message count
+         ./hornetqsi message count DLQ
+```
+
