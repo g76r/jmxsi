@@ -27,7 +27,6 @@ import javax.management.remote.JMXServiceURL;
 
 // LATER add an option to disable CompositeData walk through
 // LATER support for several command at once, using stdin instead of command line
-// LATER support for lsop command
 
 public class JmxShellInterface {
 
@@ -47,6 +46,9 @@ public class JmxShellInterface {
 			JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
 			jmxsi.lsattrCommand(args[2], args.length >= 4 ? args[3] : "*",
 					args.length >= 5 ? args[4] : "%CompositeAttribute: %Type");
+		} else if (command.equals("lsop")) {
+			JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
+			jmxsi.lsopCommand(args[2], args.length >= 4 ? args[3] : "%Operation: %Type");
 		} else if (command.equals("get")) {
 			if (args.length >= 4) {
 				JmxShellInterface jmxsi = new JmxShellInterface(args[1]);
@@ -118,8 +120,7 @@ public class JmxShellInterface {
 			System.exit(1);
 		}
 		for (ObjectInstance o : objectinstances) {
-			String output = evaluateObject(o, outputformat);
-			System.out.println(output);
+			System.out.println(evaluateObject(o, outputformat));
 		}
 	}
 
@@ -146,12 +147,44 @@ public class JmxShellInterface {
 					}
 				}
 				context.put("Type", type);
-				String output = evaluateObject(o, outputformat, context);
-				System.out.println(output);
+				System.out.println(evaluateObject(o, outputformat, context));
 			}
 		}
 	}
-	
+
+	/** Handler for "lsop" command. */
+	public void lsopCommand(String objectname, String outputformat) throws Exception {
+		List<ObjectInstance> objectinstances = queryObjects(objectname);
+		if (objectinstances.size() == 0) {
+			System.out.println("No such objects found.");
+			System.exit(1);
+		}
+		for (ObjectInstance o : objectinstances) {
+			MBeanOperationInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getOperations();
+			ArrayList<String> signature = new ArrayList<String>();
+			Map<String,String> context = new HashMap<String,String>();
+			for (MBeanOperationInfo info: infos) {
+				MBeanParameterInfo[] paraminfos = info.getSignature();
+				StringBuffer name = new StringBuffer();
+				name.append(info.getName()).append('(');
+				boolean first = true;
+				signature.clear();
+				for (MBeanParameterInfo paraminfo : paraminfos) {
+					if (first)
+						first = false;
+					else
+						name.append(',');
+					name.append(paraminfo.getType());
+					signature.add(paraminfo.getType());
+				}
+				name.append(')');
+				context.put("Operation", name.toString());
+				context.put("Type", info.getReturnType());
+				System.out.println(evaluateObject(o, outputformat, context));
+			}
+		}
+	}
+
 	/** Handler for "get" command. */
 	public void getCommand(String objectname, String attrname, String outputformat) throws Exception {
 		List<ObjectInstance> objectinstances = queryObjects(objectname);
@@ -236,6 +269,8 @@ public class JmxShellInterface {
 			MBeanOperationInfo[] infos = mbeanServer.getMBeanInfo(o.getObjectName()).getOperations();
 			MBeanOperationInfo operationinfo = null;
 			ArrayList<String> signature = new ArrayList<String>();
+			Map<String,String> context = new HashMap<String,String>();
+			context.put("Operation", operationname);
 			for (MBeanOperationInfo info: infos) {
 				MBeanParameterInfo[] paraminfos = info.getSignature();
 				StringBuffer name = new StringBuffer();
@@ -253,6 +288,7 @@ public class JmxShellInterface {
 				name.append(')');
 				if (operationname.equals(name.toString())) {
 					operationinfo = info;
+					context.put("Type", info.getReturnType());
 					break;
 				}
 			}
@@ -271,7 +307,6 @@ public class JmxShellInterface {
 				objects[i] = convertValueToObject(params[i], type);
 			}
 			Object result = mbeanServer.invoke(o.getObjectName(), operationinfo.getName(), objects, signature.toArray(new String[signature.size()]));
-			Map<String,String> context = new HashMap<String,String>();
 			context.put("Result", (result == null ? "null" : result.toString()));
 			System.out.println(evaluateObject(o, outputformat, context));
 		}

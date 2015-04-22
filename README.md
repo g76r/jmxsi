@@ -20,7 +20,7 @@ commands:
 - help
 - lsobj url objectname [outputformat]
 - lsattr url objectname [attrname] [outputformat]
-- lsop url objectname [outputformat] (NOT YET IMPLEMENTED)
+- lsop url objectname [outputformat]
 - get url objectname attrname [outputformat]
 - set url objectname attrname value [outputformat]
 - invoke url objectname operation [-o outputformat] [operationparams]
@@ -39,6 +39,7 @@ params:
               "%CompositeAttribute" for lsattr
               "%Result" for invoke
               "%CompositeAttribute: %Type" for lsattr
+              "%Operation: %Type" for lsop
 - attributename: attribute name or comma-separated enumeration or *
         e.g.: "HeapMemoryUsage"
               "HeapMemoryUsage,NonHeapMemoryUsage"
@@ -151,6 +152,25 @@ java.lang:type=Compilation ObjectName: javax.management.ObjectName
 java.lang:type=Compilation TotalCompilationTime: long
 java.lang:name=Copy,type=GarbageCollector CollectionCount: long
 java.lang:name=Copy,type=GarbageCollector CollectionTime: long
+(...)
+$
+```
+
+Listing operations of Memory object:
+```
+$ ./jmxsi lsop "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'java.lang:type=Memory'
+gc(): void
+$
+```
+
+Listing operations of all standard java objects:
+```
+$ ./jmxsi lsop "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" 'java.lang:*' '%CanonicalName %Operation: %Type'
+java.lang:type=Memory gc(): void
+java.lang:name=Code Cache,type=MemoryPool resetPeakUsage(): void
+java.lang:name=Eden Space,type=MemoryPool resetPeakUsage(): void
+java.lang:name=Perm Gen,type=MemoryPool resetPeakUsage(): void
+java.lang:name=Survivor Space,type=MemoryPool resetPeakUsage(): void
 (...)
 $
 ```
