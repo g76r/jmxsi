@@ -41,7 +41,7 @@ exit 1
 }
 
 jmxsi() {
-  java -cp .:target/classes:jmxsi.jar com.hallowyn.jmxsi.JmxShellInterface "$@"
+  java -cp /usr/share/java/jmxsi.jar:.:target/classes:jmxsi.jar com.hallowyn.jmxsi.JmxShellInterface "$@"
 }
 
 jsonformat() {
@@ -56,12 +56,13 @@ SCOPE="$1"
 COMMAND="$2"
 OBJECTS="${3/,/ }"
 [ "$#" -ge 2 ] && shift 2
-if [ -z "$HORNETQ_JMX_URL" ]; then
+if [ -z "$HORNETQ_JMX_URL" ]; then
   cat << !
 Error: HORNETQ_JMX_URL not set
   environment variable HORNETQ_JMX_URL must be set
     e.g. export HORNETQ_JMX_URL="service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi"
 !
+exit 1
 fi
 case "$SCOPE.$COMMAND" in
 queue.pause)
