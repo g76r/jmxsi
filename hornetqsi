@@ -56,6 +56,13 @@ SCOPE="$1"
 COMMAND="$2"
 OBJECTS="${3/,/ }"
 [ "$#" -ge 2 ] && shift 2
+if [ -z "$HORNETQ_JMX_URL" ]; then
+  cat << !
+Error: HORNETQ_JMX_URL not set
+  environment variable HORNETQ_JMX_URL must be set
+    e.g. export HORNETQ_JMX_URL="service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi"
+!
+fi
 case "$SCOPE.$COMMAND" in
 queue.pause)
   for QUEUE in $OBJECTS; do
