@@ -1,5 +1,5 @@
 Name:	jmxsi	
-Version:	1.0.0
+Version:	1.1.0
 Release:	1%{?dist}
 Summary:	JMX Shell Interface (jmxsi) command line interface JMX client
 License:	GPLv3
@@ -15,6 +15,9 @@ JMX operations.
 It supports getting easily composite attributes (such as HeapMemoryUsage) and
 bulk getting/setting/invoking on several objects at a time using * in object
 name.
+
+The package also contains a higher level tool for HornetQ message broker
+administration.
 
 %prep
 %setup -q -c %{name}
@@ -36,5 +39,7 @@ cp jmxsi.jar %{buildroot}/usr/share/java/
 %doc
 
 %changelog
+* Mon May 11 2015 Grégoire Barbier <devel@g76r.eu> - 1.1.0-1
+- Releasing 1.1.0
 * Mon May 4 2015 Grégoire Barbier <devel@g76r.eu> - 1.0.0-1
 - Initial package
