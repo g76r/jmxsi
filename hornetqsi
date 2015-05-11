@@ -48,6 +48,11 @@ USAGE:
     e.g. $0 message remove FOOBAR
          $0 message remove DLQ -f "_HQ_ORIG_QUEUE = 'jms.queue.FOOBAR'"
 
+  $0 message move [-f <filter>] <queuenames> <targetqueuename>
+    move messages from given JMS queues to another queue
+    e.g. $0 message move QUEUE1 QUEUE2
+         $0 message move DLQ foo -f "_HQ_ORIG_QUEUE = 'jms.queue.foo'"
+
 ENVIRONMENT:
 
   environment variable HORNETQ_JMX_URL must be set
@@ -82,7 +87,7 @@ SCOPE="$1"
 COMMAND="$2"
 [ "$#" -ge 2 ] && shift 2
 OBJECTS=
-TARGET=
+SECONDARY=
 
 while [ -n "$1" ]; do
 case "$1" in
@@ -94,7 +99,7 @@ case "$1" in
   if [ -z "$OBJECTS" ]; then
     OBJECTS="${1/,/ }"
   else
-    TARGET="$1"
+    SECONDARY="$1"
   fi
 ;;
 esac
@@ -161,6 +166,12 @@ message.remove)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" "removeMessages(java.lang.String)" -o "$QUEUE: %Result messages removed" "$FILTER"
+  done
+;;
+message.move)
+  [ -n "$OBJECTS" -a -n "$SECONDARY" ] || help
+  for QUEUE in $OBJECTS; do
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" "moveMessages(java.lang.String,java.lang.String)" -o "$QUEUE: %Result messages moved" "$FILTER" "jms.queue.$SECONDARY"
   done
 ;;
 *)
