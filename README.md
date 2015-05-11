@@ -341,35 +341,57 @@ hornetqsi
 ---------
 
 ```
-usage:
-  ./hornetqsi queue list
+USAGE:
+  hornetqsi queue list
     list all existing JMS queues
-  ./hornetqsi queue pause <queuenames>
+  hornetqsi queue pause <queuenames>
     pause one or several queues, messages will become invisible to consumers
     until the queue is resumed
-    e.g. ./hornetqsi queue pause DLQ,ExpiryQueue
-  ./hornetqsi queue resume <queuenames>
+    e.g. hornetqsi queue pause DLQ,ExpiryQueue
+  hornetqsi queue resume <queuenames>
     resume one or several queues
-    e.g. ./hornetqsi queue resume DLQ
-  ./hornetqsi queue create <queuenames>
+    e.g. hornetqsi queue resume DLQ
+  hornetqsi queue create <queuenames>
     create new JMS durable queues
-    e.g. ./hornetqsi queue create foo
-  ./hornetqsi queue destroy <queuenames>
+    e.g. hornetqsi queue create foo
+  hornetqsi queue destroy <queuenames>
     destroy existing JMS queues
-    e.g. ./hornetqsi queue destroy foo
-  ./hornetqsi queue purge <queuenames>
+    e.g. hornetqsi queue destroy foo
+  hornetqsi queue purge <queuenames>
     remove all messages from given JMS queues
-    e.g. ./hornetqsi queue purge ExpiryQueue
-  ./hornetqsi message list <queuenames>
+    e.g. hornetqsi queue purge ExpiryQueue
+  hornetqsi message list [-f <filter>] <queuenames>
     list all messages currently in given JMS queues
-    e.g. ./hornetqsi queue list DLQ
-  ./hornetqsi message first <queuenames>
+    e.g. hornetqsi queue list DLQ
+  hornetqsi message first <queuenames>
     list first message currently in given JMS queues
-    e.g. ./hornetqsi message first DLQ
-  ./hornetqsi message count [<queuenames>]
+    e.g. hornetqsi message first DLQ
+  hornetqsi message count [-f <filter>] [<queuenames>]
     give current message count in given JMS queues, or in every queue if no
     queue name is specified
-    e.g. ./hornetqsi message count
-         ./hornetqsi message count DLQ
+    e.g. hornetqsi message count
+         hornetqsi message count DLQ -f "_HQ_ORIG_QUEUE = 'jms.queue.FOOBAR'"
+  hornetqsi message remove [-f <filter>] <queuenames>
+    remove messages from given JMS queues
+    e.g. hornetqsi message remove FOOBAR
+         hornetqsi message remove DLQ -f "_HQ_ORIG_QUEUE = 'jms.queue.FOOBAR'"
+  hornetqsi message move [-f <filter>] <queuenames> <targetqueuename>
+    move messages from given JMS queues to another queue
+    e.g. hornetqsi message move QUEUE1 QUEUE2
+         hornetqsi message move DLQ foo -f "_HQ_ORIG_QUEUE = 'jms.queue.foo'"
+
+ENVIRONMENT:
+  environment variable HORNETQ_JMX_URL must be set
+    e.g. export HORNETQ_JMX_URL="service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi"
+
+FILTERS:
+  filters specified with -f option follow JMS selectors syntax, which is mainly
+  inspired by SQL
+  e.g. "HQPriority = 0", "HQPriority BETWEEN 0 AND 3",
+    "HQPriority BETWEEN 0 AND 3 AND foobar IS NULL AND HQSize > 1000",
+    "_HQ_ORIG_QUEUE = 'jms.queue.TO_AUDIT'"
+  see J2EE and HornetQ doc for a more precise reference:
+    http://docs.oracle.com/cd/E19798-01/821-1841/bncer/index.html
+    https://docs.jboss.org/hornetq/2.4.0.Final/docs/user-manual/html_single/#filter-expressions
 ```
 
