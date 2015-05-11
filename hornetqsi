@@ -1,41 +1,54 @@
 #!/bin/bash
 
 help() {
-cat <<!
-usage:
+([ -t 1 ] && pager || cat) <<!
+
+USAGE:
+
   $0 queue list
     list all existing JMS queues
+
   $0 queue pause <queuenames>
     pause one or several queues, messages will become invisible to consumers
     until the queue is resumed
     e.g. $0 queue pause DLQ,ExpiryQueue
+
   $0 queue resume <queuenames>
     resume one or several queues
     e.g. $0 queue resume DLQ
+
   $0 queue create <queuenames>
     create new JMS durable queues
     e.g. $0 queue create foo
+
   $0 queue destroy <queuenames>
     destroy existing JMS queues
     e.g. $0 queue destroy foo
+
   $0 queue purge <queuenames>
     remove all messages from given JMS queues
     e.g. $0 queue purge ExpiryQueue
+
   $0 message list <queuenames>
     list all messages currently in given JMS queues
     e.g. $0 queue list DLQ
+
   $0 message first <queuenames>
     list first message currently in given JMS queues
     e.g. $0 message first DLQ
+
   $0 message count [<queuenames>]
     give current message count in given JMS queues, or in every queue if no
     queue name is specified
     e.g. $0 message count
          $0 message count DLQ
 
-environment:
+
+ENVIRONMENT:
+
   environment variable HORNETQ_JMX_URL must be set
     e.g. export HORNETQ_JMX_URL="service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi"
+
 !
 exit 1
 }
