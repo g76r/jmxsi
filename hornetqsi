@@ -66,6 +66,17 @@ ENVIRONMENT:
   environment variable HORNETQ_JMX_URL must be set
     e.g. export HORNETQ_JMX_URL="service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi"
 
+FILTERS:
+
+  filters specified with -f option follow JMS selectors syntax, which is mainly
+  inspired by SQL
+  e.g. "HQPriority = 0", "HQPriority BETWEEN 0 AND 3",
+    "HQPriority BETWEEN 0 AND 3 AND foobar IS NULL AND HQSize > 1000",
+    "_HQ_ORIG_QUEUE = 'jms.queue.TO_AUDIT'"
+  see J2EE and HornetQ doc for a more precise reference:
+    http://docs.oracle.com/cd/E19798-01/821-1841/bncer/index.html
+    https://docs.jboss.org/hornetq/2.4.0.Final/docs/user-manual/html_single/#filter-expressions
+
 !
 exit 1
 }
