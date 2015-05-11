@@ -29,7 +29,7 @@ USAGE:
     remove all messages from given JMS queues
     e.g. $0 queue purge ExpiryQueue
 
-  $0 message list [-f filter] <queuenames>
+  $0 message list [-f <filter>] <queuenames>
     list all messages currently in given JMS queues
     e.g. $0 queue list DLQ
 
@@ -37,12 +37,16 @@ USAGE:
     list first message currently in given JMS queues
     e.g. $0 message first DLQ
 
-  $0 message count [<queuenames>]
+  $0 message count [-f <filter>] [<queuenames>]
     give current message count in given JMS queues, or in every queue if no
     queue name is specified
     e.g. $0 message count
-         $0 message count DLQ
+         $0 message count DLQ -f "_HQ_ORIG_QUEUE = 'jms.queue.FOOBAR'"
 
+  $0 message remove [-f <filter>] <queuenames>
+    remove messages from given JMS queues
+    e.g. $0 message remove FOOBAR
+         $0 message remove DLQ -f "_HQ_ORIG_QUEUE = 'jms.queue.FOOBAR'"
 
 ENVIRONMENT:
 
@@ -126,11 +130,12 @@ queue.destroy)
   done
 ;;
 queue.purge)
-  [ -n "$OBJECTS" ] || help
+  [ -n "$OBJECTS" -a -z "$FILTER" ] || help
   for QUEUE in $OBJECTS; do
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" 'removeMessages(java.lang.String)' -o "$QUEUE purged from %Result messages" ''
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" "removeMessages(java.lang.String)" -o "$QUEUE: %Result messages removed" ""
   done
 ;;
+
 message.list)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
@@ -146,11 +151,17 @@ message.first)
 message.count)
   if [ -n "$OBJECTS" ]; then
     for QUEUE in $OBJECTS; do
-      jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" 'countMessages(java.lang.String)' -o "%name: %Result" '' | queueformat
+      jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" "countMessages(java.lang.String)" -o "$QUEUE: %Result" "$FILTER" | queueformat
     done
   else
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,*" 'countMessages(java.lang.String)' -o "%name: %Result" '' | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,*" "countMessages(java.lang.String)" -o "%name: %Result" "$FILTER" | queueformat
   fi
+;;
+message.remove)
+  [ -n "$OBJECTS" ] || help
+  for QUEUE in $OBJECTS; do
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" "removeMessages(java.lang.String)" -o "$QUEUE: %Result messages removed" "$FILTER"
+  done
 ;;
 *)
   help
