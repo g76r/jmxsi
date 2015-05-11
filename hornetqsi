@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o pipefail # return code of a pipe is !0 if any process fails (not just the last one)
+
 if [[ "$0" =~ ^\./ ]]; then
   SCRIPT_DIR="$(pwd)/$(dirname "$0")"
 elif [[ "$0" =~ ^/ ]]; then
@@ -116,6 +118,7 @@ COMMAND="$2"
 [ "$#" -ge 2 ] && shift 2
 OBJECTS=
 SECONDARY=
+RC=0
 
 while [ -n "$1" ]; do
 case "$1" in
@@ -139,38 +142,38 @@ queue.pause)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" 'pause()' -o "$QUEUE paused" | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" 'pause()' -o "$QUEUE paused" | queueformat || RC=1
   done
 ;;
 queue.resume)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" 'resume()' -o "$QUEUE resumed" | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" 'resume()' -o "$QUEUE resumed" | queueformat || RC=1
   done
 ;;
 queue.list)
-  jmxsi lsobj "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,*" %name | queueformat
+  jmxsi lsobj "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,*" %name | queueformat || RC=1
 ;;
 queue.create)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Server" 'createQueue(java.lang.String,java.lang.String,boolean)' -o "$QUEUE created" "$QUEUE" "$QUEUE" true | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Server" 'createQueue(java.lang.String,java.lang.String,boolean)' -o "$QUEUE created" "$QUEUE" "$QUEUE" true | queueformat || RC=1
   done
 ;;
 queue.destroy)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Server" 'destroyQueue(java.lang.String)' -o "$QUEUE destroyed" "$QUEUE" | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Server" 'destroyQueue(java.lang.String)' -o "$QUEUE destroyed" "$QUEUE" | queueformat || RC=1
   done
 ;;
 queue.purge)
   [ -n "$OBJECTS" -a -z "$FILTER" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "removeMessages(java.lang.String)" -o "$QUEUE: %Result messages removed" "" | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "removeMessages(java.lang.String)" -o "$QUEUE: %Result messages removed" "" | queueformat || RC=1
   done
 ;;
 
@@ -178,41 +181,43 @@ message.list)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "listMessagesAsJSON(java.lang.String)" "$FILTER" | jsonformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "listMessagesAsJSON(java.lang.String)" "$FILTER" | jsonformat || RC=1
   done
 ;;
 message.first)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi get "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" FirstMessageAsJSON %Value | jsonformat
+    jmxsi get "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" FirstMessageAsJSON %Value | jsonformat || RC=1
   done
 ;;
 message.count)
   if [ -n "$OBJECTS" ]; then
     for QUEUE in $OBJECTS; do
       [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-      jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "countMessages(java.lang.String)" -o "$QUEUE: %Result" "$FILTER" | queueformat
+      jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "countMessages(java.lang.String)" -o "$QUEUE: %Result" "$FILTER" | queueformat || RC=1
     done
   else
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,*" "countMessages(java.lang.String)" -o "%name: %Result" "$FILTER" | queueformat -q
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,*" "countMessages(java.lang.String)" -o "%name: %Result" "$FILTER" | queueformat -q || RC=1
   fi
 ;;
 message.remove)
   [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "removeMessages(java.lang.String)" -o "$QUEUE: %Result messages removed" "$FILTER" | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "removeMessages(java.lang.String)" -o "$QUEUE: %Result messages removed" "$FILTER" | queueformat || RC=1
   done
 ;;
 message.move)
   [ -n "$OBJECTS" -a -n "$SECONDARY" ] || help
   for QUEUE in $OBJECTS; do
     [[ "$QUEUE" =~ ^jms.queue.* ]] || QUEUE="jms.queue.$QUEUE"
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "moveMessages(java.lang.String,java.lang.String)" -o "$QUEUE: %Result messages moved" "$FILTER" "$SECONDARY" | queueformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"$QUEUE\",*" "moveMessages(java.lang.String,java.lang.String)" -o "$QUEUE: %Result messages moved" "$FILTER" "$SECONDARY" | queueformat || RC=1
   done
 ;;
 *)
   help
 ;;
 esac
+
+exit $RC
