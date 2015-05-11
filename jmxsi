@@ -1,2 +1,11 @@
-#!/bin/sh
-exec java -cp /usr/share/java/jmxsi.jar:.:target/classes:jmxsi.jar com.hallowyn.jmxsi.JmxShellInterface "$@"
+#!/bin/bash
+
+if [[ "$0" =~ ^\./ ]]; then
+  SCRIPT_DIR="$(pwd)/$(dirname "$0")"
+elif [[ "$0" =~ ^/ ]]; then
+  SCRIPT_DIR="$(dirname "$0")"
+else
+  SCRIPT_DIR="$(dirname "$(which "$0"|head -1)")"
+fi
+
+exec java -cp "/usr/share/java/jmxsi.jar:$SCRIPT_DIR:$SCRIPT_DIR/target/classes:$SCRIPT_DIR/jmxsi.jar" com.hallowyn.jmxsi.JmxShellInterface "$@"

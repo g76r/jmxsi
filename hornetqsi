@@ -1,5 +1,13 @@
 #!/bin/bash
 
+if [[ "$0" =~ ^\./ ]]; then
+  SCRIPT_DIR="$(pwd)/$(dirname "$0")"
+elif [[ "$0" =~ ^/ ]]; then
+  SCRIPT_DIR="$(dirname "$0")"
+else
+  SCRIPT_DIR="$(dirname "$(which "$0"|head -1)")"
+fi
+
 help() {
 ([ -t 1 ] && pager || cat) <<!
 
@@ -63,7 +71,7 @@ exit 1
 }
 
 jmxsi() {
-  java -cp /usr/share/java/jmxsi.jar:.:target/classes:jmxsi.jar com.hallowyn.jmxsi.JmxShellInterface "$@"
+  "$SCRIPT_DIR/jmxsi" "$@"
 }
 
 jsonformat() {
