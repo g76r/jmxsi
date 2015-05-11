@@ -29,7 +29,7 @@ USAGE:
     remove all messages from given JMS queues
     e.g. $0 queue purge ExpiryQueue
 
-  $0 message list <queuenames>
+  $0 message list [-f filter] <queuenames>
     list all messages currently in given JMS queues
     e.g. $0 queue list DLQ
 
@@ -65,10 +65,6 @@ queueformat() {
   sed 's/^"jms.queue.//;s/"$//;s/":/:/'
 }
 
-SCOPE="$1"
-COMMAND="$2"
-OBJECTS="${3/,/ }"
-[ "$#" -ge 2 ] && shift 2
 if [ -z "$HORNETQ_JMX_URL" ]; then
   cat << !
 Error: HORNETQ_JMX_URL not set
@@ -77,13 +73,39 @@ Error: HORNETQ_JMX_URL not set
 !
 exit 1
 fi
+
+SCOPE="$1"
+COMMAND="$2"
+[ "$#" -ge 2 ] && shift 2
+OBJECTS=
+TARGET=
+
+while [ -n "$1" ]; do
+case "$1" in
+-f)
+  shift
+  FILTER="$1"
+;;
+*)
+  if [ -z "$OBJECTS" ]; then
+    OBJECTS="${1/,/ }"
+  else
+    TARGET="$1"
+  fi
+;;
+esac
+[ "$#" -gt 0 ] && shift  
+done
+
 case "$SCOPE.$COMMAND" in
 queue.pause)
+  [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" 'pause()' -o "$QUEUE paused"
   done
 ;;
 queue.resume)
+  [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" 'resume()' -o "$QUEUE resumed"
   done
@@ -92,26 +114,31 @@ queue.list)
   jmxsi lsobj "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,*" %name | queueformat
 ;;
 queue.create)
+  [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Server" 'createQueue(java.lang.String,java.lang.String,boolean)' -o "$QUEUE created" "jms.queue.$QUEUE" "jms.queue.$QUEUE" true
   done
 ;;
 queue.destroy)
+  [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Server" 'destroyQueue(java.lang.String)' -o "$QUEUE destroyed" "jms.queue.$QUEUE"
   done
 ;;
 queue.purge)
+  [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" 'removeMessages(java.lang.String)' -o "$QUEUE purged from %Result messages" ''
   done
 ;;
 message.list)
+  [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
-    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" 'listMessagesAsJSON(java.lang.String)' '' | jsonformat
+    jmxsi invoke "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" "listMessagesAsJSON(java.lang.String)" "$FILTER" | jsonformat
   done
 ;;
 message.first)
+  [ -n "$OBJECTS" ] || help
   for QUEUE in $OBJECTS; do
     jmxsi get "$HORNETQ_JMX_URL" "org.hornetq:module=Core,type=Queue,name=\"jms.queue.$QUEUE\",*" FirstMessageAsJSON %Value | jsonformat
   done
