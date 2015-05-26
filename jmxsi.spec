@@ -1,5 +1,5 @@
 Name:	jmxsi	
-Version:	1.1.0
+Version:	1.2.0
 Release:	1%{?dist}
 Summary:	JMX Shell Interface (jmxsi) command line interface JMX client
 License:	GPLv3
@@ -39,6 +39,8 @@ cp jmxsi.jar %{buildroot}/usr/share/java/
 %doc
 
 %changelog
+* Tue May 26 2015 Grégoire Barbier <devel@g76r.eu> - 1.2.0-1
+- Releasing 1.2.0
 * Mon May 11 2015 Grégoire Barbier <devel@g76r.eu> - 1.1.0-1
 - Releasing 1.1.0
 * Mon May 4 2015 Grégoire Barbier <devel@g76r.eu> - 1.0.0-1
