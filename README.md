@@ -186,6 +186,28 @@ java.lang:name=Survivor Space,type=MemoryPool resetPeakUsage(): void
 $
 ```
 
+Tomcat Examples
+---------------
+
+Getting Tomcat thread pool metrics:
+```
+$ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:8090/jmxrmi" 'Catalina:type=ThreadPool,*' 'currentThreadCount,currentThreadsBusy,maxThreads'
+currentThreadCount=0
+currentThreadsBusy=0
+maxThreads=200
+$
+```
+
+Getting Tomcat JDBC connection pool metrics (for applications that use Tomcat's JDBC connection pool):
+```
+$ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:8090/jmxrmi" 'tomcat.jdbc:type=ConnectionPool,*' 'Active,MaxActive,Idle,MinIdle'
+Active=0
+MaxActive=10
+Idle=10
+MinIdle=10
+$
+```
+
 HornetQ Examples
 ----------------
 
