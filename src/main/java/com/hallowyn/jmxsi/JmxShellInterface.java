@@ -327,7 +327,11 @@ public class JmxShellInterface {
 	 * @param objectname e.g. "java.lang:type=Memory" or "org.hornetq:module=Core,type=Acceptor,*"
 	 */
 	public List<ObjectInstance> queryObjects(String objectname) throws Exception {
-        Set<ObjectInstance> set = mbeanServer.queryMBeans(new ObjectName(objectname), null);
+		Set<ObjectInstance> set;
+		if (objectname.equals("*") || objectname.isEmpty())
+			set = mbeanServer.queryMBeans(null, null);
+		else
+			set = mbeanServer.queryMBeans(new ObjectName(objectname), null);
         List<ObjectInstance> list = new LinkedList<ObjectInstance>(set);
         Collections.sort(list, new Comparator<ObjectInstance>() {
         	@Override

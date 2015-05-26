@@ -77,6 +77,19 @@ java.lang:type=Threading
 $
 ```
 
+Getting all objects list:
+```
+$ ./jmxsi lsobj "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" "*"
+JMImplementation:type=MBeanServerDelegate
+com.sun.management:type=HotSpotDiagnostic
+java.lang:type=ClassLoading
+java.lang:type=Compilation
+java.lang:name=Copy,type=GarbageCollector
+java.lang:name=MarkSweepCompact,type=GarbageCollector
+(...)
+$
+```
+
 Getting HeapMemoryUsage attribute (which is a CompositeData object):
 ```
 $ ./jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:5444/jmxrmi" "java.lang:type=Memory" HeapMemoryUsage
