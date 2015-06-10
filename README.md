@@ -329,6 +329,11 @@ $
 Statsd / Graphite metrics feeding from HornetQ JMX attributes
 -------------------------------------------------------------
 
+See Graphite/Carbon and Statsd documentation for information about their
+feeding formats:
+https://github.com/etsy/statsd/blob/master/docs/metric_types.md
+http://graphite.readthedocs.org/en/latest/feeding-carbon.html
+
 Getting 4 attributes for every HornetQ queue, and formating them using statsd
 gauge format in a one-line shell command:
 ```
@@ -348,6 +353,31 @@ This command could even be redirected to statsd through
 bash's >/dev/udp/server/port redirection or piped to netcat to directly feed
 statsd.
 
+
+ActiveMQ Examples
+-----------------
+
+See ActiveMQ JMX documentation for more information about ActiveMQ JMX
+attributes: http://activemq.apache.org/jmx.html
+
+Getting topic names
+```
+$ jmxsi lsobj "service:jmx:rmi:///jndi/rmi://localhost:25008/jmxrmi" 'org.apache.activemq:Type=Topic,*' '%Destination'
+queue1
+queue2
+queue3
+$
+```
+
+Getting queues size:
+```
+$ jmxsi get "service:jmx:rmi:///jndi/rmi://localhost:25008/jmxrmi" 'org.apache.activemq:Type=Topic,*' 'QueueSize' "%Destination: %Value"
+queue1: 0
+queue2: 0
+queue3: 7
+$
+```
+
 Compilation And Packaging
 =========================
 
@@ -361,7 +391,7 @@ cd jmxsi
 make
 ```
 
-There are no dependencies apart from the JVM.
+There are no runtime dependencies apart from the JVM, bash and usual unix utils.
 
 Secondary tools
 ===============
