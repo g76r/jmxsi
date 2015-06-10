@@ -382,16 +382,20 @@ Compilation And Packaging
 =========================
 
 JMX Shell Interface is not (yet) available with released packages, however,
-provided you've got a Unix box with a JDK, it can very easily be built and
-installed that way:
+provided you've got a Unix box with a JDK, git client and make, it can easily
+be built and installed that way:
 
 ```
 git clone https://github.com/g76r/jmxsi.git
 cd jmxsi
 make
+sudo ln -s $(pwd)/jmxsi /usr/bin/
 ```
 
 There are no runtime dependencies apart from the JVM, bash and usual unix utils.
+
+Altought .rpm or .deb packages are not publicly maintained and available, there
+is a descent jmxsi.spec RPM source file in the source repository.
 
 Secondary tools
 ===============
