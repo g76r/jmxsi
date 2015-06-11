@@ -4,7 +4,7 @@ JAVA_TARGET_DIR=target/classes
 JAR_FILE=jmxsi.jar
 TAR_FILE=jmxsi.tar.gz
 README_FILE=README.md
-BINS=jmxsi hornetqsi
+BINS=jmxsi hornetqsi bash_completion/jmxsi
 
 JAVAC=javac
 JAR=jar

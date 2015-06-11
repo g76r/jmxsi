@@ -29,6 +29,8 @@ mkdir -p %{buildroot}/usr/local/bin
 cp jmxsi hornetqsi %{buildroot}/usr/local/bin/
 mkdir -p %{buildroot}/usr/share/java
 cp jmxsi.jar %{buildroot}/usr/share/java/
+mkdir -p %{buildroot}/usr/share/bash-completion/completions
+cp bash_completion/jmxsi  %{buildroot}/usr/share/bash-completion/completions/
 
 %files
 %defattr(755, root, root, 755)

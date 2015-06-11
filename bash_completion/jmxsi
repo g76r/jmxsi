@@ -1,0 +1,28 @@
+# bash_completion for jmxsi and secondary tools
+_jmxsi()
+{
+    local cur prev words cword split
+    _init_completion -s || return
+    if [[ $cword == 1 ]]; then
+        COMPREPLY=( $( compgen -W 'help lsobj lsattr lsop get set invoke' -- "$cur" ) )
+        return
+    fi
+} && complete -F _jmxsi jmxsi
+_hornetqsi()
+{
+    local cur prev words cword split
+    _init_completion -s || return
+    if [[ $cword == 1 ]]; then
+        COMPREPLY=( $( compgen -W 'queue message' -- "$cur" ) )
+        return
+    elif [[ $cword == 2 ]]; then
+        if [[ $prev == queue ]]; then
+            COMPREPLY=( $( compgen -W 'list pause resume create destroy purge' -- "$cur" ) )
+            return
+        elif [[ $prev == message ]]; then
+            COMPREPLY=( $( compgen -W 'list first count remove move' -- "$cur" ) )
+            return
+        fi 
+    fi
+} && complete -F _hornetqsi hornetqsi
+
