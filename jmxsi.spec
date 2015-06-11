@@ -1,5 +1,5 @@
 Name:	jmxsi	
-Version:	1.2.0
+Version:	1.3.0
 Release:	1%{?dist}
 Summary:	JMX Shell Interface (jmxsi) command line interface JMX client
 License:	GPLv3
@@ -38,9 +38,12 @@ cp bash_completion/jmxsi  %{buildroot}/usr/share/bash-completion/completions/
 /usr/local/bin/hornetqsi
 %defattr(644, root, root, 755)
 /usr/share/java/jmxsi.jar
+/usr/share/bash-completion/completions/jmxsi
 %doc
 
 %changelog
+* Thu Jun 11 2015 Grégoire Barbier <devel@g76r.eu> - 1.3.0-1
+- Releasing 1.3.0
 * Tue May 26 2015 Grégoire Barbier <devel@g76r.eu> - 1.2.0-1
 - Releasing 1.2.0
 * Mon May 11 2015 Grégoire Barbier <devel@g76r.eu> - 1.1.0-1
